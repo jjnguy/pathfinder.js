@@ -9,14 +9,13 @@
   </style>
 </head>
 <body>
-Fix the backtrack case
 <canvas id="canvas"></canvas>
 <button onclick="doIt()">find path</button>
 <script>
   function Maze() {
     var self = this;
-    var height = 6;
-    var width = 6;
+    var height = 16;
+    var width = 16;
 
     var start = { x: 0, y: 0 };
     var end = { x: width - 1, y: height - 1 };
