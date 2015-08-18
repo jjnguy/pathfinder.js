@@ -15,14 +15,14 @@
   <script>
     function Maze() {
       var self = this;
-      var height = 128;
-      var width = 128;
+      var height = 50;
+      var width = 50;
 
       var start = { x: 0, y: 0 };
       var end = { x: width - 1, y: height - 1 };
       var walls = [];
 
-      self.gridWidth = 8;
+      self.gridWidth = 16;
 
       self.graph = {};
       self.openSet = {};
@@ -32,7 +32,7 @@
       self.resetPath = function () {
         self.graph = {};
         self.openSet = {};
-        self.closedSet = [];
+        self.closedSet = {};
 
         for (var i = 0; i < width; i++) {
           for (var j = 0; j < height; j++) {
@@ -43,17 +43,17 @@
         for (var node in self.graph) {
           var point = pointNameToPoint(node);
           var edges = self.graph[node].edges;
-          edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y - 1 })]);
+          //edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y - 1 })]);
           edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y })]);
-          edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y + 1 })]);
+          //edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y + 1 })]);
 
           edges.push(self.graph[pointToName({ x: point.x, y: point.y - 1 })]);
           //edges.push(graph[pointToName({ x: point.x, y: point.y })]);
           edges.push(self.graph[pointToName({ x: point.x, y: point.y + 1 })]);
 
-          edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y - 1 })]);
+          //edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y - 1 })]);
           edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y })]);
-          edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y + 1 })]);
+          //edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y + 1 })]);
         }
 
         self.openSet['0+0'] = self.graph['0+0'];
@@ -70,21 +70,20 @@
       function stepNode(current) {
         for (var edgIdx in current.edges) {
           var edge = current.edges[edgIdx];
-          if (edge === undefined || self.closedSet.indexOf(edge.name) >= 0) continue;
+          if (edge === undefined || self.closedSet[edge.name] != undefined) continue;
           if ((edge.distanceTo || 1010101) > current.distanceTo + 1) {
             self.openSet[edge.name] = edge;
             edge.distanceTo = current.distanceTo + 1;
             edge.path = current.path.concat([current.name]);
             if (edge.isTheEnd) {
               self.finalPath = edge.path;
-              // self.draw(canvas);
               return { solved: true, dist: edge.distanceTo - 1 };
             }
           }
         }
 
         delete self.openSet[current.name];
-        self.closedSet.push(current.name);
+        self.closedSet[current.name] = current;
 
         var shortest = 10101010101;
         for (var nodeName in self.openSet) {
@@ -120,8 +119,12 @@
         canvas.width = self.gridWidth * width;
         canvas.height = self.gridWidth * height;
 
-        for (var closedIdx in self.closedSet) {
-          drawPointOnCanvas(ctx, pointNameToPoint(self.closedSet[closedIdx]), 'lavender');
+        for (var closed in self.closedSet) {
+          var point = pointNameToPoint(closed);
+          var translatedPoint = pointToCanvasPoint(point);
+          ctx.fillStyle = 'black';
+          ctx.fillText('' + self.closedSet[closed].distanceTo, translatedPoint.x, translatedPoint.y);
+          drawPointOnCanvas(ctx, point, 'lavender');
         }
 
         for (var open in self.openSet) {
@@ -175,6 +178,20 @@
     canvas.addEventListener('click', function (evnt) {
       maze.addWall(Math.floor(evnt.offsetX / maze.gridWidth), Math.floor(evnt.offsetY / maze.gridWidth));
       maze.draw(canvas);
+    });
+
+    var down = false;
+    canvas.addEventListener('mousedown', function (evnt) {
+      down = true;
+    });
+    canvas.addEventListener('mouseup', function (evnt) {
+      down = false;
+    });
+
+    canvas.addEventListener('mousemove', function(evnt) {
+      if (down) {
+        maze.addWall(Math.floor(evnt.offsetX / maze.gridWidth), Math.floor(evnt.offsetY / maze.gridWidth));
+      }
     });
 
     var current = maze.resetPath();
