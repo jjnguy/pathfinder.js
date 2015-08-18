@@ -15,14 +15,14 @@
   <script>
     function Maze() {
       var self = this;
-      var height = 50;
-      var width = 50;
+      var height = 100;
+      var width = 100;
 
       var start = { x: 0, y: 0 };
       var end = { x: width - 1, y: height - 1 };
       var walls = [];
 
-      self.gridWidth = 16;
+      self.gridWidth = 8;
 
       self.graph = {};
       self.openSet = {};
@@ -123,7 +123,7 @@
           var point = pointNameToPoint(closed);
           var translatedPoint = pointToCanvasPoint(point);
           ctx.fillStyle = 'black';
-          ctx.fillText('' + self.closedSet[closed].distanceTo, translatedPoint.x, translatedPoint.y);
+          //ctx.fillText('' + self.closedSet[closed].distanceTo, translatedPoint.x, translatedPoint.y);
           drawPointOnCanvas(ctx, point, 'lavender');
         }
 
