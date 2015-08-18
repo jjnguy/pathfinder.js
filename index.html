@@ -43,17 +43,11 @@
         for (var node in self.graph) {
           var point = pointNameToPoint(node);
           var edges = self.graph[node].edges;
-          //edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y - 1 })]);
-          edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y })]);
-          //edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y + 1 })]);
-
-          edges.push(self.graph[pointToName({ x: point.x, y: point.y - 1 })]);
-          //edges.push(graph[pointToName({ x: point.x, y: point.y })]);
           edges.push(self.graph[pointToName({ x: point.x, y: point.y + 1 })]);
-
-          //edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y - 1 })]);
+          edges.push(self.graph[pointToName({ x: point.x, y: point.y - 1 })]);
+          
           edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y })]);
-          //edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y + 1 })]);
+		  edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y })]);
         }
 
         self.openSet['0+0'] = self.graph['0+0'];
@@ -163,11 +157,16 @@
         return point.x + '+' + point.y;
       }
 
+	  
+	  var pointMemory = {};
       function pointNameToPoint(ptName) {
-        return {
+		if (pointMemory[ptName]) return pointMemory[ptName];
+        var result = {
           x: parseInt(ptName.split('+')[0]),
           y: parseInt(ptName.split('+')[1])
         };
+		pointMemory[ptName] = result;
+		return result;
       }
     }
 
