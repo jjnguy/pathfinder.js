@@ -9,66 +9,65 @@
   </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
-<button onclick="doIt()">find path</button>
-<script>
-  function Maze() {
-    var self = this;
-    var height = 16;
-    var width = 16;
+  <canvas id="canvas"></canvas>
+  <button onclick="doIt()">step path</button>
+  <button onclick="doItAll()">find path</button>
+  <script>
+    function Maze() {
+      var self = this;
+      var height = 128;
+      var width = 128;
 
-    var start = { x: 0, y: 0 };
-    var end = { x: width - 1, y: height - 1 };
-    var walls = [];
+      var start = { x: 0, y: 0 };
+      var end = { x: width - 1, y: height - 1 };
+      var walls = [];
 
-    self.gridWidth = 32;
+      self.gridWidth = 8;
 
-    self.graph = {};
-    self.openSet = {};
-    self.closedSet = {};
-    self.finalPath = [];
-
-    function resetPath() {
       self.graph = {};
       self.openSet = {};
-      self.closedSet = [];
+      self.closedSet = {};
+      self.finalPath = [];
 
-      for (var i = 0; i < width; i++) {
-        for (var j = 0; j < height; j++) {
-          if (isWall({ x: i, y: j })) continue;
-          self.graph[i + '+' + j] = { name: i + '+' + j, edges: [] };
+      self.resetPath = function () {
+        self.graph = {};
+        self.openSet = {};
+        self.closedSet = [];
+
+        for (var i = 0; i < width; i++) {
+          for (var j = 0; j < height; j++) {
+            if (isWall({ x: i, y: j })) continue;
+            self.graph[i + '+' + j] = { name: i + '+' + j, edges: [] };
+          }
         }
-      }
-      for (var node in self.graph) {
-        var point = pointNameToPoint(node);
-        var edges = self.graph[node].edges;
-        edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y - 1 })]);
-        edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y })]);
-        edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y + 1 })]);
+        for (var node in self.graph) {
+          var point = pointNameToPoint(node);
+          var edges = self.graph[node].edges;
+          edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y - 1 })]);
+          edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y })]);
+          edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y + 1 })]);
 
-        edges.push(self.graph[pointToName({ x: point.x, y: point.y - 1 })]);
-        //edges.push(graph[pointToName({ x: point.x, y: point.y })]);
-        edges.push(self.graph[pointToName({ x: point.x, y: point.y + 1 })]);
+          edges.push(self.graph[pointToName({ x: point.x, y: point.y - 1 })]);
+          //edges.push(graph[pointToName({ x: point.x, y: point.y })]);
+          edges.push(self.graph[pointToName({ x: point.x, y: point.y + 1 })]);
 
-        edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y - 1 })]);
-        edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y })]);
-        edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y + 1 })]);
-      }
+          edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y - 1 })]);
+          edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y })]);
+          edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y + 1 })]);
+        }
 
-      self.openSet['0+0'] = self.graph['0+0'];
-      self.graph['0+0'].path = [];
-    };
+        self.openSet['0+0'] = self.graph['0+0'];
+        self.graph['0+0'].path = [];
 
+        var initialPoint = self.openSet[pointToName(start)];
+        initialPoint.distanceTo = 1;
+        var destination = self.graph[pointToName(end)];
+        destination.isTheEnd = true;
 
-    self.drawPath = function(canvas) {
-      resetPath();
+        return initialPoint;
+      };
 
-      var initialPoint = self.openSet[pointToName(start)];
-      initialPoint.distanceTo = 1;
-      var destination = self.graph[pointToName(end)];
-      destination.isTheEnd = true;
-      var current = initialPoint;
-      do {
+      function stepNode(current) {
         for (var edgIdx in current.edges) {
           var edge = current.edges[edgIdx];
           if (edge === undefined || self.closedSet.indexOf(edge.name) >= 0) continue;
@@ -78,8 +77,8 @@
             edge.path = current.path.concat([current.name]);
             if (edge.isTheEnd) {
               self.finalPath = edge.path;
-              self.draw(canvas);
-              return edge.distanceTo - 1;
+              // self.draw(canvas);
+              return { solved: true, dist: edge.distanceTo - 1 };
             }
           }
         }
@@ -95,70 +94,102 @@
             shortest = node.distanceTo;
           }
         }
-      } while (Object.keys(self.openSet).length != 0);
-    };
-
-    self.addWall = function(x, y) {
-      walls.push(pointToName({ x: x, y: y }));
-    };
-
-    self.draw = function(canvas) {
-      var ctx = canvas.getContext('2d');
-      canvas.width = self.gridWidth * width;
-      canvas.height = self.gridWidth * height;
-
-      for (var wallIdx in walls) {
-        drawPointOnCanvas(ctx, pointNameToPoint(walls[wallIdx]), 'black');
+        return { solved: false, current: current };
       }
 
-      for (var pathIdx in self.finalPath) {
-        drawPointOnCanvas(ctx, pointNameToPoint(self.finalPath[pathIdx]), 'lightblue');
+      self.stepPath = function (current) {
+        return stepNode(current);
+      };
+
+      self.drawPath = function () {
+        var current = self.resetPath();
+        do {
+          var result = stepNode(current);
+          if (result.solved) return result.dist;
+          else current = result.current;
+        } while (Object.keys(self.openSet).length != 0);
+        return 'no solution';
+      };
+
+      self.addWall = function (x, y) {
+        walls.push(pointToName({ x: x, y: y }));
+      };
+
+      self.draw = function (canvas) {
+        var ctx = canvas.getContext('2d');
+        canvas.width = self.gridWidth * width;
+        canvas.height = self.gridWidth * height;
+
+        for (var closedIdx in self.closedSet) {
+          drawPointOnCanvas(ctx, pointNameToPoint(self.closedSet[closedIdx]), 'lavender');
+        }
+
+        for (var open in self.openSet) {
+          drawPointOnCanvas(ctx, pointNameToPoint(open), 'lightgreen');
+        }
+
+        for (var wallIdx in walls) {
+          drawPointOnCanvas(ctx, pointNameToPoint(walls[wallIdx]), 'black');
+        }
+
+        for (var pathIdx in self.finalPath) {
+          drawPointOnCanvas(ctx, pointNameToPoint(self.finalPath[pathIdx]), 'lightblue');
+        }
+        drawPointOnCanvas(ctx, start, 'green');
+        drawPointOnCanvas(ctx, end, 'red');
+      };
+
+      function isWall(point) {
+        return walls.indexOf(pointToName(point)) >= 0;
       }
-      drawPointOnCanvas(ctx, start, 'green');
-      drawPointOnCanvas(ctx, end, 'red');
-    };
 
-    function isWall(point) {
-      return walls.indexOf(pointToName(point)) >= 0;
+      function drawPointOnCanvas(ctx, point, color) {
+        ctx.fillStyle = color;
+        var translatedPoint = pointToCanvasPoint(point);
+        ctx.fillRect(translatedPoint.x, translatedPoint.y, self.gridWidth, self.gridWidth);
+      }
+
+      function pointToCanvasPoint(point) {
+        return {
+          x: point.x * self.gridWidth,
+          y: point.y * self.gridWidth
+        };
+      }
+
+      function pointToName(point) {
+        return point.x + '+' + point.y;
+      }
+
+      function pointNameToPoint(ptName) {
+        return {
+          x: parseInt(ptName.split('+')[0]),
+          y: parseInt(ptName.split('+')[1])
+        };
+      }
     }
 
-    function drawPointOnCanvas(ctx, point, color) {
-      ctx.fillStyle = color;
-      var translatedPoint = pointToCanvasPoint(point);
-      ctx.fillRect(translatedPoint.x, translatedPoint.y, self.gridWidth, self.gridWidth);
-    }
-
-    function pointToCanvasPoint(point) {
-      return {
-        x: point.x * self.gridWidth,
-        y: point.y * self.gridWidth
-      };
-    }
-
-    function pointToName(point) {
-      return point.x + '+' + point.y;
-    }
-
-    function pointNameToPoint(ptName) {
-      return {
-        x: parseInt(ptName.split('+')[0]),
-        y: parseInt(ptName.split('+')[1])
-      };
-    }
-  }
-
-  var maze = new Maze();
-  var canvas = document.getElementById('canvas');
-  maze.draw(canvas);
-
-  canvas.addEventListener('click', function(evnt) {
-    maze.addWall(Math.floor(evnt.offsetX / maze.gridWidth), Math.floor(evnt.offsetY / maze.gridWidth));
+    var maze = new Maze();
+    var canvas = document.getElementById('canvas');
     maze.draw(canvas);
-  });
 
-  function doIt() {
-    maze.drawPath(canvas);
-  }
-</script>
+    canvas.addEventListener('click', function (evnt) {
+      maze.addWall(Math.floor(evnt.offsetX / maze.gridWidth), Math.floor(evnt.offsetY / maze.gridWidth));
+      maze.draw(canvas);
+    });
+
+    var current = maze.resetPath();
+
+    function doItAll() {
+      maze.drawPath(canvas);
+      maze.draw(canvas);
+    }
+
+    function doIt() {
+      var result = maze.stepPath(current);
+      if (result.solved) alert('done');
+      else current = result.current;
+      maze.draw(canvas);
+    }
+  </script>
 </body>
 </html>
