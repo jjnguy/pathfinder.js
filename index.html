@@ -29,16 +29,16 @@
     function Maze2(canvas) {
       var self = this;
 
-      var height = 8;
-      var width = 8;
+      var height = 200;
+      var width = 200;
+
+      var start = { x: 0, y: 0 };
+      var end = { x: width / 2 - 1, y: height / 2 - 1 };
 
       var walls = {};
       var currentSln = reset();
 
-      var start = { x: 0, y: 0 };
-      var end = { x: width - 1, y: height - 1 };
-
-      self.gridWidth = 10;
+      self.gridWidth = 5;
 
       var ctx = canvas.getContext('2d');
       self.draw = function () {
@@ -53,12 +53,17 @@
           drawPointOnCanvas(ctx, point, 'lavender');
         }
 
-        for (var open in currentSln.openSet.all()) {
-          drawPointOnCanvas(ctx, pointNameToPoint(open), 'lightgreen');
+        var openNodes = currentSln.openSet.all();
+        for (var open in openNodes) {
+          drawPointOnCanvas(ctx, pointNameToPoint(openNodes[open].name), 'lightgreen');
         }
 
         for (var wallIdx in walls) {
           drawPointOnCanvas(ctx, pointNameToPoint(wallIdx), 'black');
+        }
+
+        for (var pendingWall in pendingChanges) {
+          drawPointOnCanvas(ctx, pendingChanges[pendingWall], 'gray');
         }
 
         for (var pathIdx in currentSln.finalPath) {
@@ -69,23 +74,46 @@
       };
 
       function reset() {
-        return new Djk({ x: 0, y: 0 }, { x: height - 1, y: height - 1 }, new Graph(height, walls));
+        return new Djk(start, end, new Graph(height, walls));
       }
 
+      self.currentNode = undefined;
+
+      self.stepPath = function () {
+        return currentSln.advance();
+      };
+
       self.drawPath = function () {
-        var current = reset();
         do {
           var result = currentSln.advance();
           if (result.success) return result.distanceTo;
-          else current = result.current;
+          else self.currentNode = result.current;
         } while (Object.keys(currentSln.openSet).length != 0);
         return 'no solution';
       };
 
+      var editMode = false;
+      var pendingChanges = {};
+      self.edit = function () {
+        editMode = true;
+      };
       self.addWall = function (point) {
-        walls[pointToName(point)] = point;
+        if (!editMode) return;
+        pendingChanges[pointToName(point)] = point;
         self.draw();
       };
+      self.saveEdits = function () {
+        for (var newWall in pendingChanges) {
+          walls[newWall] = pendingChanges[newWall];
+        }
+        currentSln = reset();
+        editMode = false;
+        pendingChanges = [];
+      };
+      self.cancelEdit = function () {
+        pendingChanges = [];
+        editMode = false;
+      }
 
       function drawPointOnCanvas(ctx, point, color) {
         ctx.fillStyle = color;
@@ -120,7 +148,6 @@
         self.closedSet.add(next);
         for (var i = 0; i < next.edges.length; i++) {
           var edge = next.edges[i];
-          if (edge == undefined) continue;
           if (edge.isTheEnd) {
             self.finalPath = next.path;
             return { success: true, path: edge.path, distance: next.distanceTo + 1 };
@@ -180,6 +207,10 @@
 
       self.nodes = {};
 
+      self.node = function (point) {
+        return self.nodes[pointToName(point)];
+      }
+
       for (var i = 0; i < height; i++) {
         for (var j = 0; j < height; j++) {
           if (isWall({ x: i, y: j })) continue;
@@ -190,222 +221,63 @@
         var point = pointNameToPoint(node);
         var edges = self.nodes[node].edges;
 
-        // potential bug here - shouldn't be adding walls into edge sets
+        var edge1 = self.node({ x: point.x, y: point.y + 1 });
+        if (edge1) edges.push(edge1);
 
-        edges.push(self.nodes[pointToName({ x: point.x, y: point.y + 1 })]);
-        edges.push(self.nodes[pointToName({ x: point.x, y: point.y - 1 })]);
+        var edge2 = self.node({ x: point.x, y: point.y - 1 });
+        if (edge2) edges.push(edge2);
 
-        edges.push(self.nodes[pointToName({ x: point.x - 1, y: point.y })]);
-        edges.push(self.nodes[pointToName({ x: point.x + 1, y: point.y })]);
+        var edge3 = self.node({ x: point.x - 1, y: point.y });
+        if (edge3) edges.push(edge3);
+
+        var edge4 = self.node({ x: point.x + 1, y: point.y });
+        if (edge4) edges.push(edge4);
       }
 
       function isWall(point) {
         return wallSet[pointToName(point)] != undefined;
       }
-
-      self.node = function (point) {
-        return self.nodes[pointToName(point)];
-      }
     }
 
     //////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    function Maze() {
-      var self = this;
-      var height = 100;
-      var width = 100;
-
-      var start = { x: 0, y: 0 };
-      var end = { x: width - 1, y: height - 1 };
-      var walls = [];
-
-      self.gridWidth = 10;
-
-      self.graph = {};
-      self.openSet = {};
-      self.closedSet = {};
-      self.finalPath = [];
-
-      self.resetPath = function () {
-        self.graph = {};
-        self.openSet = {};
-        self.closedSet = {};
-        self.finalPath = [];
-
-        for (var i = 0; i < width; i++) {
-          for (var j = 0; j < height; j++) {
-            if (isWall({ x: i, y: j })) continue;
-            self.graph[i + '+' + j] = { name: i + '+' + j, edges: [] };
-          }
-        }
-        for (var node in self.graph) {
-          var point = pointNameToPoint(node);
-          var edges = self.graph[node].edges;
-          edges.push(self.graph[pointToName({ x: point.x, y: point.y + 1 })]);
-          edges.push(self.graph[pointToName({ x: point.x, y: point.y - 1 })]);
-
-          edges.push(self.graph[pointToName({ x: point.x - 1, y: point.y })]);
-          edges.push(self.graph[pointToName({ x: point.x + 1, y: point.y })]);
-        }
-
-        self.openSet['0+0'] = self.graph['0+0'];
-        self.graph['0+0'].path = [];
-
-        var initialPoint = self.openSet[pointToName(start)];
-        initialPoint.distanceTo = 1;
-        var destination = self.graph[pointToName(end)];
-        destination.isTheEnd = true;
-
-        return initialPoint;
-      };
-
-      function stepNode(current) {
-        for (var edgIdx in current.edges) {
-          var edge = current.edges[edgIdx];
-          if (edge === undefined || self.closedSet[edge.name] != undefined) continue;
-          if ((edge.distanceTo || 1010101) > current.distanceTo + 1) {
-            self.openSet[edge.name] = edge;
-            edge.distanceTo = current.distanceTo + 1;
-            edge.path = current.path.concat([current.name]);
-            if (edge.isTheEnd) {
-              self.finalPath = edge.path;
-              return { solved: true, dist: edge.distanceTo - 1 };
-            }
-          }
-        }
-
-        delete self.openSet[current.name];
-        self.closedSet[current.name] = current;
-
-        var shortest = 10101010101;
-        for (var nodeName in self.openSet) {
-          var node = self.openSet[nodeName];
-          if ((node.distanceTo || 10101010) < shortest) {
-            current = node;
-            shortest = node.distanceTo;
-          }
-        }
-        return { solved: false, current: current };
-      }
-
-      self.stepPath = function (current) {
-        return stepNode(current);
-      };
-
-      self.drawPath = function () {
-        var current = self.resetPath();
-        do {
-          var result = stepNode(current);
-          if (result.solved) return result.dist;
-          else current = result.current;
-        } while (Object.keys(self.openSet).length != 0);
-        return 'no solution';
-      };
-
-      self.addWall = function (x, y) {
-        walls.push(pointToName({ x: x, y: y }));
-      };
-
-      self.draw = function (canvas) {
-        var ctx = canvas.getContext('2d');
-        canvas.width = self.gridWidth * width;
-        canvas.height = self.gridWidth * height;
-
-        for (var closed in self.closedSet) {
-          var point = pointNameToPoint(closed);
-          var translatedPoint = pointToCanvasPoint(point);
-          ctx.fillStyle = 'black';
-          //ctx.fillText('' + self.closedSet[closed].distanceTo, translatedPoint.x, translatedPoint.y);
-          drawPointOnCanvas(ctx, point, 'lavender');
-        }
-
-        for (var open in self.openSet) {
-          drawPointOnCanvas(ctx, pointNameToPoint(open), 'lightgreen');
-        }
-
-        for (var wallIdx in walls) {
-          drawPointOnCanvas(ctx, pointNameToPoint(walls[wallIdx]), 'black');
-        }
-
-        for (var pathIdx in self.finalPath) {
-          drawPointOnCanvas(ctx, pointNameToPoint(self.finalPath[pathIdx]), 'lightblue');
-        }
-        drawPointOnCanvas(ctx, start, 'green');
-        drawPointOnCanvas(ctx, end, 'red');
-      };
-
-      function drawPointOnCanvas(ctx, point, color) {
-        ctx.fillStyle = color;
-        var translatedPoint = pointToCanvasPoint(point);
-        ctx.fillRect(translatedPoint.x, translatedPoint.y, self.gridWidth, self.gridWidth);
-      }
-
-      function pointToCanvasPoint(point) {
-        return {
-          x: point.x * self.gridWidth,
-          y: point.y * self.gridWidth
-        };
-      }
-
-
-    }
-
-    //var maze = new Maze();
-    //var canvas = document.getElementById('canvas');
     var canvas2 = document.getElementById('canvas2');
     var maze2 = new Maze2(canvas2);
-    //maze.draw(canvas);
     maze2.draw(canvas2);
 
-    canvas2.addEventListener('click', function (evnt) {
-      maze2.addWall({ x: Math.floor(evnt.offsetX / maze2.gridWidth), y: Math.floor(evnt.offsetY / maze2.gridWidth) });
-      maze2.draw();
-    });
-
+    var wallsToAdd = [];
     var down = false;
     canvas2.addEventListener('mousedown', function (evnt) {
       down = true;
+      maze2.edit();
     });
     canvas2.addEventListener('mouseup', function (evnt) {
       down = false;
+      maze2.saveEdits();
+      maze2.draw();
     });
 
     canvas2.addEventListener('mousemove', function (evnt) {
       if (down) {
         maze2.addWall({ x: Math.floor(evnt.offsetX / maze2.gridWidth), y: Math.floor(evnt.offsetY / maze2.gridWidth) });
-        maze2.draw();
       }
     });
 
+    canvas2.addEventListener('click', function (evnt) {
+      maze2.edit();
+      maze2.addWall({ x: Math.floor(evnt.offsetX / maze2.gridWidth), y: Math.floor(evnt.offsetY / maze2.gridWidth) });
+      maze2.saveEdits();
+      maze2.draw();
+    });
+
     function doItSlow() {
-      var current = maze2.resetPath();
-      setInterval(function () {
-        var result = maze2.stepPath(current);
-        if (result.solved) alert('done');
-        else current = result.current;
+      var interval = setInterval(function () {
+        var result = maze2.stepPath();
+        if (result.success) {
+          alert('done');
+          clearInterval(interval);
+        }
         maze2.draw();
       }, 10);
     }
@@ -416,9 +288,8 @@
     }
 
     function doIt() {
-      var result = maze2.stepPath(current);
-      if (result.solved) alert('done');
-      else current = result.current;
+      var result = maze2.stepPath();
+      if (result.success) alert('done');
       maze2.draw();
     }
 
