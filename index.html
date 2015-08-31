@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
   <title>Pathfinder</title>
@@ -74,7 +74,7 @@
       };
 
       function reset() {
-        return new Djk(start, end, new Graph(height, walls));
+        return new AStar(start, end, new Graph(height, walls));
       }
 
       self.currentNode = undefined;
@@ -129,10 +129,55 @@
       }
     }
 
+    function AStar(start, end, graph) {
+      var self = this;
+
+      self.openSet = new OpenSet(function (node1, node2) {
+        node1.h = node1.h || h(node1, end);
+        node2.h = node2.h || h(node2, end);
+        node1.distanceTo = node1.distanceTo || 1010101;
+        node2.distanceTo = node2.distanceTo || 1010101;
+        return (node1.h + node1.distanceTo) - (node2.h + node2.distanceTo);
+      });
+      self.closedSet = new ClosedSet();
+
+      self.openSet.add(graph.node(start));
+
+      graph.node(start).distanceTo = 1;
+      graph.node(start).h = h(graph.node(start), graph.node(end));
+      graph.node(start).path = [];
+      graph.node(end).isTheEnd = true;
+
+      self.finalPath = [];
+
+      self.advance = function () {
+        var next = self.openSet.next();
+        self.closedSet.add(next);
+        for (var i = 0; i < next.edges.length; i++) {
+          var edge = next.edges[i];
+          if (edge.isTheEnd) {
+            self.finalPath = next.path;
+            return { success: true, path: edge.path, distance: next.distanceTo + 1 };
+          } else if (!self.closedSet.contains(edge.name) && (next.distanceTo + 1 < (edge.distanceTo || 1010101))) {
+            edge.path = next.path.concat(edge);
+            edge.distanceTo = next.distanceTo + 1;
+            self.openSet.add(edge);
+          }
+        }
+        return { success: false, current: next };
+      };
+
+      function h(node, end) {
+        return Math.sqrt(Math.pow(node.x - end.x, 2) + Math.pow(node.y - end.y, 2));
+      }
+    }
+
     function Djk(start, end, graph) {
       var self = this;
 
-      self.openSet = new OpenSet();
+      self.openSet = new OpenSet(function (node1, node2) {
+        return node1.distanceTo - node2.distanceTo;
+      });
       self.closedSet = new ClosedSet();
 
       self.openSet.add(graph.node(start));
@@ -178,14 +223,14 @@
       };
     }
 
-    function OpenSet() {
+    function OpenSet(compareFunction) {
       var self = this;
 
       var nodes = [];
 
       self.add = function (point) {
         for (var i = 0; i < nodes.length; i++) {
-          if (point.distanceTo <= nodes[i].distanceTo) {
+          if (compareFunction(point, nodes[i]) <= 0) {
             nodes.splice(i, 0, point);
             return;
           }
