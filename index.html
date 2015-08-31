@@ -14,6 +14,10 @@
   <button onclick="doIt()">step path</button>
   <button onclick="doItAll()">find path</button>
   <button onclick="doItSlow()">slomo path</button>
+  <select onchange="setAlgorithm(this)">
+    <option>Dijkstra's</option>
+    <option>A*</option>
+  </select>
   <script>
     var pointMemory = {};
     function pointNameToPoint(ptName) {
@@ -29,16 +33,22 @@
     function Maze2(canvas) {
       var self = this;
 
-      var height = 200;
-      var width = 200;
+      var height = 16;
+      var width = 16;
 
       var start = { x: 0, y: 0 };
       var end = { x: width / 2 - 1, y: height / 2 - 1 };
 
       var walls = {};
+      var useAStar = false;
+      self.useAStar = function(value) {
+        useAStar = value;
+        currentSln = reset();
+        self.draw();
+      };
       var currentSln = reset();
 
-      self.gridWidth = 5;
+      self.gridWidth = 10;
 
       var ctx = canvas.getContext('2d');
       self.draw = function () {
@@ -74,7 +84,10 @@
       };
 
       function reset() {
-        return new AStar(start, end, new Graph(height, walls));
+        if (useAStar)
+          return new AStar(start, end, new Graph(height, walls));
+        else
+          return new Djk(start, end, new Graph(height, walls));
       }
 
       self.currentNode = undefined;
@@ -336,6 +349,10 @@
       var result = maze2.stepPath();
       if (result.success) alert('done');
       maze2.draw();
+    }
+
+    function setAlgorithm(select) {
+      maze2.useAStar(select.value == 'A*');
     }
 
     function pointToName(point) {
