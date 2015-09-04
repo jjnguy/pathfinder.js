@@ -34,85 +34,51 @@
     function MazeGenerator() {
       var self = this;
 
-      self.buildMaze = function(maze) {
+      self.buildMaze = function (maze) {
         maze.edit();
         maze.clearWalls();
 
-        var dim = maze.dim();
-        dim.xMin = 0;
-        dim.yMin = 0;
-
-        buildSubMaze(dim, maze);
+        buildGrid(maze);
 
         maze.saveEdits();
       };
 
-      function buildSubMaze(dim, maze) {
-        var midX = dim.width / 2 + dim.xMin;
-        var midY = dim.height / 2 + dim.yMin;
-        var yHole = Math.floor(Math.random() * (dim.yMin + dim.height)) + dim.yMin;
-        var xHole = Math.floor(Math.random() * (dim.xMin + dim.width)) + dim.xMin;
-        for (var i = dim.xMin; i < dim.xMin + dim.width; i++) {
-          if (i == xHole) continue;
-          maze.addWall({ x: i, y: midY });
+      function buildGrid(maze) {
+        var dim = maze.dim();
+        for (var i = 1; i < dim.height - 1; i += 2) {
+          for (var j = 0; j < dim.width; j++) {
+            if (Math.random() > .65) {
+              maze.addWall({ x: j, y: i });
+            }
+            if (Math.random() > .65) {
+              maze.addWall({ x: i, y: j });
+            }
+          }
         }
-        for (var j = dim.yMin; j < dim.yMin + dim.height; j++) {
-          if (j == yHole) continue;
-          maze.addWall({ x: midX, y: j });
-        }
-
-        NEED TO CREATE A GRID - CURRENT SOLUTION IS BUSTED
-
-        if (dim.width <= 2 || dim.height <= 2) return;
-        
-        buildSubMaze({
-          height: dim.height / 2,
-          width: dim.width / 2,
-          xMin: dim.xMin,
-          yMin: dim.yMin
-        }, maze);
-        buildSubMaze({
-          height: dim.height / 2,
-          width: dim.width / 2,
-          xMin: dim.xMin + dim.width + 1,
-          yMin: dim.yMin
-        }, maze);
-        buildSubMaze({
-          height: dim.height / 2,
-          width: dim.width / 2,
-          xMin: dim.xMin + dim.width + 1,
-          yMin: dim.yMin + dim.height + 1
-        }, maze);
-        buildSubMaze({
-          height: dim.height / 2,
-          width: dim.width / 2,
-          xMin: dim.xMin,
-          yMin: dim.yMin + dim.height + 1
-        }, maze);
       }
     }
 
     function Maze2(canvas) {
       var self = this;
 
-      var height = 100;
-      var width = 100;
+      var height = 41;
+      var width = 41;
 
-      self.dim = function() { return { height : height, width : width } };
+      self.dim = function () { return { height: height, width: width } };
 
       var start = { x: 0, y: 0 };
-      var end = { x: width / 2 - 2, y: height / 2 - 2 };
+      var end = { x: width - 1, y: height - 1 };
 
       var walls = {};
       var useAStar = false;
-      self.useAStar = function(value) {
+      self.useAStar = function (value) {
         useAStar = value;
         currentSln = reset();
         self.draw();
       };
       var currentSln = reset();
 
-      self.gridWidth = 6;
+      self.gridWidth = 16;
 
       var ctx = canvas.getContext('2d');
       self.draw = function () {
@@ -174,7 +140,7 @@
       self.edit = function () {
         editMode = true;
       };
-      self.clearWalls = function() {
+      self.clearWalls = function () {
         if (!editMode) return;
         walls = {};
         self.draw();
